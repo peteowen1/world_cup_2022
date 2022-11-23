@@ -3,19 +3,19 @@ library(tidyverse)
 library(furrr)
 options(future.fork.enable = T)
 options(dplyr.summarise.inform = F)
-plan(multicore(workers = parallel::detectCores()-1))
+#plan(multicore(workers = parallel::detectCores()-1))
 source('helpers.R')
 
 ### Simulation Parameters
-n_sims <- 10000
+n_sims <- 1000
 set.seed(12345)
 run_date <- Sys.Date()
 
 ### Coefficients
-posterior <- read_rds('model_objects/posterior.rds')
-home_field <- mean(posterior$home_field)
-neutral_field <- mean(posterior$neutral_field)
-mu <- mean(posterior$mu)
+#posterior <- read_rds('model_objects/posterior.rds')
+home_field <- 0.3 # mean(posterior$home_field)
+neutral_field <- 0.15 # mean(posterior$neutral_field)
+mu <- 0.05 # mean(posterior$mu)
 
 ### Read in Ratings and Schedule
 df_ratings <- read_csv('predictions/ratings.csv')
@@ -31,6 +31,7 @@ schedule <-
 schedule <- adorn_xg(schedule)
 
 ### Simulate Group Stage
+tictoc::tic()
 df_group_stage <- filter(schedule, !is.na(group))
 if(any(is.na(schedule$team1_score[1:48]))) {
   dfs_group_stage <- map(1:n_sims, ~df_group_stage)
@@ -48,9 +49,11 @@ if(any(is.na(schedule$team1_score[1:48]))) {
   gsr <- sim_group_stage(df_group_stage)
   group_stage_results <- map(1:n_sims, ~gsr)
 }
+tictoc::toc()
 
 ### R16
-knockout_brackets <- 
+tictoc::tic()
+knockout_brackets_r16 <- 
   future_map(knockout_brackets, ~{
     schedule %>% 
       filter(str_detect(ko_round, 'R16')) %>% 
@@ -60,10 +63,12 @@ knockout_brackets <-
       adorn_xg(.)
   })
 
-r16_results <- future_map(knockout_brackets, sim_ko_round)
+r16_results <- future_map(knockout_brackets_r16, sim_ko_round, .options = furrr_options(seed = TRUE))
+tictoc::toc()
 
 ### QF
-knockout_brackets <- 
+tictoc::tic()
+knockout_brackets_qf <- 
   future_map(r16_results, ~{
     winners <- ifelse(.x$team1_score > .x$team2_score, .x$team1, .x$team2)
     schedule %>% 
@@ -74,10 +79,12 @@ knockout_brackets <-
       adorn_xg(.)
   })
 
-qf_results <- future_map(knockout_brackets, sim_ko_round)
+qf_results <- future_map(knockout_brackets_qf, sim_ko_round, .options = furrr_options(seed = TRUE))
+tictoc::toc()
 
 ### SF
-knockout_brackets <- 
+tictoc::tic()
+knockout_brackets_sf <- 
   future_map(qf_results, ~{
     winners <- ifelse(.x$team1_score > .x$team2_score, .x$team1, .x$team2)
     schedule %>% 
@@ -88,10 +95,12 @@ knockout_brackets <-
       adorn_xg(.)
   })
 
-sf_results <- future_map(knockout_brackets, sim_ko_round)
+sf_results <- future_map(knockout_brackets_sf, sim_ko_round, .options = furrr_options(seed = TRUE))
+tictoc::toc()
 
 ### Finals
-knockout_brackets <- 
+tictoc::tic()
+knockout_brackets_final <- 
   future_map(sf_results, ~{
     winners <- ifelse(.x$team1_score > .x$team2_score, .x$team1, .x$team2)
     schedule %>% 
@@ -102,7 +111,8 @@ knockout_brackets <-
       adorn_xg(.)
   })
 
-finals_results <- future_map(knockout_brackets, sim_ko_round)
+finals_results <- future_map(knockout_brackets_final, sim_ko_round)
+tictoc::toc()
 
 ### Aggregate Results
 qf_teams <- bind_rows(qf_results) %>% pivot_longer(c('team1', 'team2')) %>% pull(value)
@@ -115,6 +125,9 @@ df_stats <-
   group_by(team, group) %>% 
   summarise('mean_pts' = mean(points),
             'mean_gd' = mean(goal_diff),
+            'mean_gd' = mean(goals_scored),
+            'mean_gd' = mean(goals_allowed),
+            'mean_place' = mean(place),
             'r16' = mean(progress),
             'qf' = sum(team == qf_teams)/n_sims,
             'sf' = sum(team == sf_teams)/n_sims,
