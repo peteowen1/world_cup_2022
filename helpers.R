@@ -70,7 +70,8 @@ sim_group_stage <- function(df_group_stage) {
     summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
               'goal_diff' = sum(team_score - opp_score),
               'goals_scored' = sum(team_score),
-              'goals_allowed' = sum(opp_score)) %>% 
+              'goals_allowed' = sum(opp_score),
+              .groups = "keep") %>% 
     ungroup() %>% 
     arrange(group, desc(points), desc(goal_diff), desc(goals_scored)) %>% 
     group_by(group) %>% 
@@ -95,7 +96,8 @@ sim_group_stage <- function(df_group_stage) {
 group_tiebreak <- function(standings, df_results) {
   df_final <- NULL
   
-  for(g in LETTERS[1:8]) {
+  #for(g in LETTERS[1:8]) 
+  tb_func <- function(g){
     group_standings <- filter(standings, group == g)
     group_results <- filter(df_results, group == g)
     
@@ -109,7 +111,9 @@ group_tiebreak <- function(standings, df_results) {
           summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
                     'goal_diff' = sum(team_score - opp_score),
                     'goals_scored' = sum(team_score),
-                    'goals_allowed' = sum(opp_score)) %>% 
+                    'goals_allowed' = sum(opp_score),
+                    .groups = "keep"
+          ) %>% 
           ungroup() %>% 
           arrange(group, desc(points), desc(goal_diff), desc(goals_scored), place) %>% 
           group_by(group) %>% 
@@ -130,7 +134,8 @@ group_tiebreak <- function(standings, df_results) {
           summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
                     'goal_diff' = sum(team_score - opp_score),
                     'goals_scored' = sum(team_score),
-                    'goals_allowed' = sum(opp_score)) %>% 
+                    'goals_allowed' = sum(opp_score),
+                    .groups = "keep") %>% 
           ungroup() %>% 
           arrange(group, desc(points), desc(goal_diff), desc(goals_scored), place) %>% 
           group_by(group) %>% 
@@ -149,7 +154,8 @@ group_tiebreak <- function(standings, df_results) {
           summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
                     'goal_diff' = sum(team_score - opp_score),
                     'goals_scored' = sum(team_score),
-                    'goals_allowed' = sum(opp_score)) %>% 
+                    'goals_allowed' = sum(opp_score),
+                    .groups = "keep") %>% 
           ungroup() %>% 
           arrange(group, desc(points), desc(goal_diff), desc(goals_scored)) %>% 
           group_by(group) %>% 
@@ -171,7 +177,8 @@ group_tiebreak <- function(standings, df_results) {
           summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
                     'goal_diff' = sum(team_score - opp_score),
                     'goals_scored' = sum(team_score),
-                    'goals_allowed' = sum(opp_score)) %>% 
+                    'goals_allowed' = sum(opp_score),
+                    .groups = "keep") %>% 
           ungroup() %>% 
           arrange(group, desc(points), desc(goal_diff), desc(goals_scored), place) %>% 
           group_by(group) %>% 
@@ -192,7 +199,8 @@ group_tiebreak <- function(standings, df_results) {
           summarise('points' = 3 * sum(team_score > opp_score) + sum(team_score == opp_score),
                     'goal_diff' = sum(team_score - opp_score),
                     'goals_scored' = sum(team_score),
-                    'goals_allowed' = sum(opp_score)) %>% 
+                    'goals_allowed' = sum(opp_score),
+                    .groups = "keep") %>% 
           ungroup() %>% 
           arrange(group, desc(points), desc(goal_diff), desc(goals_scored), place) %>% 
           group_by(group) %>% 
@@ -204,9 +212,11 @@ group_tiebreak <- function(standings, df_results) {
         group_standings$place[3:4] <- ix
       }
     }
-    df_final <- bind_rows(df_final, group_standings)
+    #df_final <- bind_rows(df_final, group_standings)
+    return(group_standings)
   }
   
+  df_final <- map_dfr(LETTERS[1:8],~tb_func(.))
   
   return(df_final)
 }
@@ -221,7 +231,7 @@ build_knockout_bracket <- function(group_stage_results) {
   f <- filter(group_stage_results, group == 'F') %>% pull(team)
   g <- filter(group_stage_results, group == 'G') %>% pull(team)
   h <- filter(group_stage_results, group == 'H') %>% pull(team)
- 
+  
   
   return(tibble('team1' = c(a[1], c[1], e[1], g[1], b[1], d[1], f[1], h[1]),
                 'team2' = c(b[2], d[2], f[2], h[2], a[2], c[2], e[2], g[2])))
@@ -256,7 +266,7 @@ sim_ko_round <- function(df) {
     df$team2_score[is.na(df$team2_score)] <- goals_2
   }  
   
-
+  
   
   return(df)
 }
@@ -278,6 +288,6 @@ match_probs_ko <- function(lambda_1, lambda_2) {
   
   win <- regulation$win + regulation$draw * extra_time$win + 0.5 * regulation$draw * extra_time$draw 
   loss <- regulation$loss + regulation$draw * extra_time$loss + 0.5 * regulation$draw * extra_time$draw 
-
+  
   return(list('win_ko' = win, 'loss_ko' = loss))
 }
