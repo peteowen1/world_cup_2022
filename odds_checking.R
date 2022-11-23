@@ -17,6 +17,15 @@ qf_tms %>%
   group_by(aanm) %>%
   summarise(prop = n()/n_sims) #%>% count(is.na(aanm))
 
+###
+if (is.atomic(aanm_teams)==FALSE) {
+  aanm_teams <- as.vector(aanm_teams$team1)  
+}
+
+aanm_dfz <- df_stats %>% filter(team %in% aanm_teams) %>% mutate(no_qf = 1-qf)
+
+1 - prod(aanm_dfz$no_qf)
+
 ########### france brazil win all group games
 groups_df <- rbindlist(group_stage_results, idcol=TRUE) %>% as_tibble()
 
