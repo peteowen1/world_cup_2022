@@ -5,12 +5,17 @@ library(tidyverse)
 get_scores <- function(date) {
   date_ <- gsub('-', '', date)
   url <- paste0('https://www.espn.com/soccer/fixtures/_/date/', date_, '/league/fifa.world')
+<<<<<<< HEAD
   scores <- readHTMLTable(getURL(url))[[1]]
   if (length(readHTMLTable(getURL(url)))>1) {
     scores2 <- readHTMLTable(getURL(url))[[2]]
     scores <- scores %>% bind_rows(scores2)
   }
 
+=======
+  scores <- readHTMLTable(getURL(url))
+  scores <- scores[[1]]
+>>>>>>> a9f48bd56a7186f132c8c4b56f5de99149230013
   penalties_ix <- 1 + which(str_detect(scores$result, 'FT-Pens'))
   penalties_winners <- gsub('\\s+win.*', '', scores$match[penalties_ix])
   df <- 

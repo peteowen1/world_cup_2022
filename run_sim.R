@@ -9,7 +9,11 @@ source('helpers.R')
 ### Simulation Parameters
 n_sims <- 1000
 set.seed(12345)
+<<<<<<< HEAD
 run_date <- Sys.Date() #as.Date('2022-11-20')
+=======
+run_date <- Sys.Date() 
+>>>>>>> a9f48bd56a7186f132c8c4b56f5de99149230013
 
 ### Coefficients
 #posterior <- read_rds('model_objects/posterior.rds')
@@ -25,9 +29,15 @@ df_ratings <- read_csv('predictions/ratings.csv') %>%
 
 schedule <- 
   read_csv('data/schedule.csv') %>% 
+<<<<<<< HEAD
   mutate('date' = as.Date(date, '%m/%d/%y')) %>% 
   mutate('team1_score' = if_else(date >= run_date, NA_real_, team1_score),
          'team2_score' = if_else(date >= run_date, NA_real_, team2_score)) %>% 
+=======
+  mutate('date' = as.Date(date, '%m/%d/%y')) %>%
+  mutate('team1_score' = ifelse(date > run_date, NA, team1_score),
+         'team2_score' = ifelse(date > run_date, NA, team2_score)) %>%
+>>>>>>> a9f48bd56a7186f132c8c4b56f5de99149230013
   mutate('team1_score' = case_when(is.na(shootout_winner) ~ as.numeric(team1_score),
                                    shootout_winner == team1 ~ 0.1 + team1_score,
                                    shootout_winner == team2 ~ -0.1 + team1_score))
@@ -45,7 +55,7 @@ if(any(is.na(schedule$team1_score[1:48]))) {
   
   ### Knockout Round
   knockout_brackets <- 
-    future_map(group_stage_results, build_knockout_bracket,
+    future_map(group_stage_results, ~build_knockout_bracket(.x$standings),
                .options = furrr_options(seed = 31121))
 }  else {
   knockout_brackets <- future_map(1:n_sims, ~filter(schedule,  str_detect(ko_round, 'R16'))) 
@@ -124,7 +134,7 @@ final_teams <- bind_rows(finals_results) %>% pivot_longer(c('team1', 'team2')) %
 winners <- bind_rows(finals_results) %>% mutate('champ' = if_else(team1_score > team2_score, team1, team2)) %>% pull(champ)
 
 df_stats <- 
-  bind_rows(group_stage_results) %>% 
+  map_dfr(group_stage_results, ~.x$standings) %>% 
   group_by(team, group) %>% 
   summarise('mean_pts' = mean(points),
             'mean_gd' = mean(goal_diff),
@@ -152,4 +162,13 @@ history <-
   bind_rows(df_stats %>% mutate('date' = run_date)) %>% 
   arrange(date)
 
+<<<<<<< HEAD
 write_csv(history, 'predictions/history.csv')
+=======
+write_rds(map(group_stage_results, .x$standings), 'predictions/sim_rds/group_stage_results.rds')
+write_rds(map(group_stage_results, .x$results), 'predictions/sim_rds/group_stage_game_results.rds')
+write_rds(r16_results, 'predictions/sim_rds/r16_results.rds')
+write_rds(qf_results, 'predictions/sim_rds/qf_results.rds')
+write_rds(sf_results, 'predictions/sim_rds/sf_results.rds')
+write_rds(finals_results, 'predictions/sim_rds/finals_results.rds')
+>>>>>>> a9f48bd56a7186f132c8c4b56f5de99149230013
