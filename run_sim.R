@@ -3,7 +3,7 @@ library(tidyverse)
 library(furrr)
 options(future.fork.enable = TRUE)
 options(dplyr.summarise.inform = FALSE)
-plan(multitsession) #plan(multicore(workers = parallel::detectCores()-1))
+plan(multisession) #plan(multicore(workers = parallel::detectCores()-1))
 source('helpers.R')
 
 ### Simulation Parameters
